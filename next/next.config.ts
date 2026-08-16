@@ -18,8 +18,8 @@ const nextConfig: NextConfig = {
         destination: `${process.env.BACKEND_URL ?? 'http://localhost:8088'}/api/:path*`,
       },
       {
-        source: '/ws',
-        destination: `${process.env.BACKEND_URL ?? 'http://localhost:8088'}/ws`,
+        source: '/ws/:path*',
+        destination: `${process.env.BACKEND_URL ?? 'http://localhost:8088'}/ws/:path*`,
       },
     ]
   },
