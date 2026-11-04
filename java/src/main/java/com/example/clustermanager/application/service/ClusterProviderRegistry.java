@@ -62,6 +62,26 @@ public class ClusterProviderRegistry {
     }
 
     /**
+     * 解析 provider 的專屬能力端口（如 {@code IKafkaInspector}、{@code IRabbitInspector}）。
+     *
+     * @param selection  集群選擇
+     * @param capability 能力接口類型
+     * @param <T>        能力類型
+     * @return 已轉型的 provider
+     * @throws IllegalArgumentException provider 不存在或未實現該能力時拋出（映射為 HTTP 400）
+     */
+    public <T> T resolveCapability(ClusterSelection selection, Class<T> capability) {
+        IClusterProvider provider = resolve(selection);
+        if (!capability.isInstance(provider)) {
+            throw new IllegalArgumentException("Cluster provider %s does not support %s".formatted(
+                    provider.descriptor().providerId(),
+                    capability.getSimpleName()
+            ));
+        }
+        return capability.cast(provider);
+    }
+
+    /**
      * 列出所有已註冊 provider 的描述符，供前端展示可選集群類型。
      *
      * @return provider 描述符列表，每項包含 mode、middleware、clusterId 等元信息

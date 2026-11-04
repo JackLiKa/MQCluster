@@ -10,6 +10,7 @@ import com.example.clustermanager.core.model.MessageScenario;
 import com.example.clustermanager.core.model.MessageSimulationResult;
 import com.example.clustermanager.core.model.MonitoringSnapshot;
 import com.example.clustermanager.core.model.OperationResult;
+import com.example.clustermanager.core.model.OperationType;
 import com.example.clustermanager.core.model.ProviderDescriptor;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -108,6 +109,31 @@ public class ClusterFacadeService {
     }
 
     /**
+     * 執行集群級一鍵操作（啟動/停止/重啟所有節點），啟停順序由 provider 決定。
+     *
+     * @param cluster       目標集群選擇
+     * @param operationType 操作類型
+     * @return 每個節點的操作結果（按執行順序）
+     * @throws IllegalArgumentException 若 provider 不存在或不支持集群級操作
+     */
+    public List<OperationResult> operateCluster(ClusterSelection cluster, OperationType operationType) {
+        return providerRegistry.resolve(cluster).operateCluster(cluster.toClusterRef(), operationType);
+    }
+
+    /**
+     * 解析 provider 的專屬能力端口（如 Kafka/RabbitMQ 檢查器）。
+     *
+     * @param cluster    目標集群選擇
+     * @param capability 能力接口類型
+     * @param <T>        能力類型
+     * @return provider 實現的能力端口
+     * @throws IllegalArgumentException 若 provider 未實現該能力
+     */
+    public <T> T capability(ClusterSelection cluster, Class<T> capability) {
+        return providerRegistry.resolveCapability(cluster, capability);
+    }
+
+    /**
      * 登記業務服務到集群節點。
      *
      * <p>委託流程：解析 provider → 轉換 {@code ClusterRef} → 調用
@@ -154,7 +180,8 @@ public class ClusterFacadeService {
                 command.payloadTemplate(),
                 command.producerNodeId(),
                 command.consumerNodeIds(),
-                command.headers()
+                command.headers(),
+                command.options()
         );
         return providerRegistry.resolve(command.cluster())
                 .simulate(command.cluster().toClusterRef(), scenario);

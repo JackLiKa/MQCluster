@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
  * facade 内部按 {@code (ClusterMode, MiddlewareType)} 选择对应 provider 适配器。
  *
  * <p>路径约定：{@code /api/clusters/{mode}/{middleware}/{clusterId}/...}，
- * 其中 mode（PSEUDO/REAL）与 middleware（ROCKETMQ）为枚举 path 变量，
+ * 其中 mode（PSEUDO/REAL）与 middleware（ROCKETMQ/KAFKA/RABBITMQ）为枚举 path 变量，
  * 通过 {@link #selection} 统一解析为大写枚举值。
  *
  * <p>校验：请求体标注 {@code @Valid} 触发 DTO 字段校验；
@@ -213,6 +213,27 @@ public class ClusterController {
     }
 
     /**
+     * POST /api/clusters/{mode}/{middleware}/{clusterId}/operations — 集群级一键启动/停止/重启。
+     *
+     * <p>启停顺序由 provider 决定（RocketMQ 先 NameServer、Kafka 先 controller，停止时逆序）。
+     *
+     * @param mode       集群模式（PSEUDO/REAL，大小写不敏感）
+     * @param middleware 中间件类型（ROCKETMQ/KAFKA/RABBITMQ，大小写不敏感）
+     * @param clusterId  集群标识
+     * @param request    操作请求体，operationType 不能为 null
+     * @return 每个节点的操作结果（按执行顺序）
+     */
+    @PostMapping("/{mode}/{middleware}/{clusterId}/operations")
+    public List<OperationResult> operateCluster(
+            @PathVariable String mode,
+            @PathVariable String middleware,
+            @PathVariable String clusterId,
+            @Valid @RequestBody NodeOperationRequest request
+    ) {
+        return clusterFacadeService.operateCluster(selection(clusterId, mode, middleware), request.operationType());
+    }
+
+    /**
      * POST /api/clusters/{mode}/{middleware}/{clusterId}/services — 登记服务节点。
      *
      * @param mode       集群模式（PSEUDO/REAL，大小写不敏感）
@@ -294,7 +315,8 @@ public class ClusterController {
                 request.payloadTemplate(),
                 request.producerNodeId(),
                 request.consumerNodeIds(),
-                request.headers()
+                request.headers(),
+                request.options()
         ));
     }
 

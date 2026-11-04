@@ -1,5 +1,7 @@
 package com.example.clustermanager.core.model;
 
+import java.util.Map;
+
 /**
  * 单条消息投递结果，领域核心层的不可变值对象。
  *
@@ -17,6 +19,19 @@ public record MessageDeliveryResult(
         /** 投递是否成功：{@code true} 表示成功送达并被消费。 */
         boolean success,
         /** 投递详情描述；成功时可为摘要，失败时为错误原因。 */
-        String detail
+        String detail,
+        /** 中间件专属属性（Kafka 的 partition/offset，RabbitMQ 的 queue/outcome 等）；不为 {@code null}。 */
+        Map<String, String> attributes
 ) {
+
+    public MessageDeliveryResult {
+        attributes = attributes == null ? Map.of() : Map.copyOf(attributes);
+    }
+
+    /**
+     * 兼容旧调用方的构造器（无 attributes）。
+     */
+    public MessageDeliveryResult(String messageKey, String producerNodeId, String consumerNodeId, boolean success, String detail) {
+        this(messageKey, producerNodeId, consumerNodeId, success, detail, Map.of());
+    }
 }

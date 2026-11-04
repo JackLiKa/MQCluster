@@ -6,12 +6,20 @@ import com.example.clustermanager.core.model.LogEntry;
 import com.example.clustermanager.core.model.MessageScenario;
 import com.example.clustermanager.core.model.MessageSimulationResult;
 import com.example.clustermanager.core.model.MiddlewareType;
+import com.example.clustermanager.core.model.lab.InternalsSnapshot;
+import com.example.clustermanager.core.model.lab.StressCommand;
+import com.example.clustermanager.core.model.lab.StressStatus;
+import com.example.clustermanager.core.port.IInternalsInspector;
+import com.example.clustermanager.core.port.IStressLab;
+import com.example.clustermanager.infrastructure.pseudo.lab.RocketMqInternalsInspector;
+import com.example.clustermanager.infrastructure.pseudo.lab.RocketMqStressLab;
 import com.example.clustermanager.core.model.MonitoringSnapshot;
 import com.example.clustermanager.core.model.NetworkLink;
 import com.example.clustermanager.core.model.NodeMetrics;
 import com.example.clustermanager.core.model.NodeStatus;
 import com.example.clustermanager.core.model.OperationResult;
 import com.example.clustermanager.core.model.OperationType;
+import com.example.clustermanager.core.model.ProviderCapabilities;
 import com.example.clustermanager.core.model.ProviderDescriptor;
 import com.example.clustermanager.core.model.ServiceRegistration;
 import com.example.clustermanager.core.port.IClusterProvider;
@@ -26,6 +34,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.stereotype.Component;
 
@@ -54,15 +63,10 @@ import org.springframework.stereotype.Component;
  * 所有狀態管理委託給線程安全的子組件。Spring 單例，構造器注入。
  */
 @Component
-public class PseudoClusterProvider implements IClusterProvider {
+public class PseudoClusterProvider implements IClusterProvider, IStressLab, IInternalsInspector {
 
-    /** Provider 描述符——標識為 PSEUDO 模式 + ROCKETMQ 中間件，供 {@code ClusterProviderRegistry} 路由 */
-    private static final ProviderDescriptor DESCRIPTOR = new ProviderDescriptor(
-            "pseudo-rocketmq",
-            "Pseudo RocketMQ Cluster",
-            com.example.clustermanager.core.model.ClusterMode.PSEUDO,
-            MiddlewareType.ROCKETMQ
-    );
+    /** Provider 描述符——標識為 PSEUDO 模式 + ROCKETMQ 中間件，供 {@code ClusterProviderRegistry} 路由；clusterId 來自配置 */
+    private final ProviderDescriptor descriptor;
 
     /** 偽集群配置屬性（cluster-id、CIDR、work-dir、auto-start 等） */
     private final PseudoClusterProperties properties;
@@ -76,6 +80,10 @@ public class PseudoClusterProvider implements IClusterProvider {
     private final EmbeddedMessageWorkbench messageWorkbench;
     /** 拓撲種子化器，負責初始化默認的 3 節點拓撲 */
     private final PseudoTopologySeeder topologySeeder;
+    /** 壓力實驗：用真實 DefaultMQProducer 持續投遞，暴露 broker 流控與拒絕 */
+    private final RocketMqStressLab stressLab;
+    /** 內部機制檢查器：讀 CommitLog 寫指針、ConsumeQueue 構建進度 */
+    private final RocketMqInternalsInspector internalsInspector;
     /** 共享審計日誌，記錄節點操作與服務變更 */
     private final AuditLog auditLog;
     /** 初始化標記——AtomicBoolean 保證 {@link #initializeIfNecessary()} 只執行一次，線程安全 */
@@ -99,7 +107,9 @@ public class PseudoClusterProvider implements IClusterProvider {
             EmbeddedRocketMqRuntime runtime,
             EmbeddedMessageWorkbench messageWorkbench,
             PseudoTopologySeeder topologySeeder,
-            AuditLog auditLog
+            AuditLog auditLog,
+            RocketMqStressLab stressLab,
+            RocketMqInternalsInspector internalsInspector
     ) {
         this.properties = properties;
         this.virtualNetwork = virtualNetwork;
@@ -108,6 +118,19 @@ public class PseudoClusterProvider implements IClusterProvider {
         this.messageWorkbench = messageWorkbench;
         this.topologySeeder = topologySeeder;
         this.auditLog = auditLog;
+        this.stressLab = stressLab;
+        this.internalsInspector = internalsInspector;
+        this.descriptor = new ProviderDescriptor(
+                "pseudo-rocketmq",
+                "RocketMQ 嵌入式集群",
+                com.example.clustermanager.core.model.ClusterMode.PSEUDO,
+                MiddlewareType.ROCKETMQ,
+                properties.clusterId(),
+                Set.of(ProviderCapabilities.CONNECTION_CONFIG,
+                        ProviderCapabilities.SERVICE_REGISTRATION,
+                        ProviderCapabilities.CLUSTER_OPERATIONS,
+                        ProviderCapabilities.LAB)
+        );
     }
 
     /**
@@ -117,7 +140,29 @@ public class PseudoClusterProvider implements IClusterProvider {
      */
     @Override
     public ProviderDescriptor descriptor() {
-        return DESCRIPTOR;
+        return descriptor;
+    }
+
+    // ---------------------------------------------------------------- 压力实验与内部机制
+
+    @Override
+    public StressStatus start(ClusterRef clusterRef, StressCommand command) {
+        return stressLab.start(clusterRef, command);
+    }
+
+    @Override
+    public StressStatus stop(ClusterRef clusterRef) {
+        return stressLab.stop(clusterRef);
+    }
+
+    @Override
+    public StressStatus status(ClusterRef clusterRef) {
+        return stressLab.status(clusterRef);
+    }
+
+    @Override
+    public InternalsSnapshot inspect(ClusterRef clusterRef) {
+        return internalsInspector.inspect(clusterRef);
     }
 
     /**
@@ -172,6 +217,58 @@ public class PseudoClusterProvider implements IClusterProvider {
         }
         nodeRegistry.transition(nodeId, runtime.status(nodeId));
         return new OperationResult(nodeId, operationType, true, "Pseudo node transitioned to " + nodeRegistry.require(nodeId).status());
+    }
+
+    /**
+     * 一鍵啟停整個偽集群。啟動按「先 NameServer 後 Broker」，停止按「先 Broker 後 NameServer」；
+     * 已處於目標狀態的節點跳過。RESTART 等價於先整體停止再整體啟動。
+     *
+     * @param clusterRef    集群引用
+     * @param operationType 操作類型
+     * @return 每個節點的操作結果（按執行順序）
+     */
+    @Override
+    public List<OperationResult> operateCluster(ClusterRef clusterRef, OperationType operationType) {
+        initializeIfNecessary();
+        List<OperationResult> results = new ArrayList<>();
+        if (operationType == OperationType.STOP || operationType == OperationType.RESTART) {
+            List<ManagedNode> stopOrder = new ArrayList<>(orderedForStart());
+            java.util.Collections.reverse(stopOrder);
+            for (ManagedNode node : stopOrder) {
+                if (nodeRegistry.require(node.nodeId()).status() == NodeStatus.STOPPED) {
+                    results.add(new OperationResult(node.nodeId(), OperationType.STOP, true, "已停止，跳過"));
+                    continue;
+                }
+                results.add(operateNode(clusterRef, node.nodeId(), OperationType.STOP));
+            }
+        }
+        if (operationType == OperationType.START || operationType == OperationType.RESTART) {
+            for (ManagedNode node : orderedForStart()) {
+                if (nodeRegistry.require(node.nodeId()).status() == NodeStatus.RUNNING) {
+                    results.add(new OperationResult(node.nodeId(), OperationType.START, true, "已運行，跳過"));
+                    continue;
+                }
+                try {
+                    results.add(operateNode(clusterRef, node.nodeId(), OperationType.START));
+                } catch (RuntimeException exception) {
+                    nodeRegistry.transition(node.nodeId(), NodeStatus.FAILED);
+                    results.add(new OperationResult(node.nodeId(), OperationType.START, false, exception.getMessage()));
+                }
+            }
+        }
+        auditLog.append("cluster", "INFO", "Cluster operation %s finished on %s".formatted(operationType, clusterRef.clusterId()));
+        return results;
+    }
+
+    /**
+     * 啟動順序：NameServer 在前，其餘按註冊表順序。
+     *
+     * @return 排好序的節點列表
+     */
+    private List<ManagedNode> orderedForStart() {
+        List<ManagedNode> ordered = new ArrayList<>(nodeRegistry.ordered());
+        ordered.sort(Comparator.comparingInt((ManagedNode node) -> "nameserver".equals(node.role()) ? 0 : 1));
+        return ordered;
     }
 
     /**

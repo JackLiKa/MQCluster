@@ -26,6 +26,7 @@ import java.util.Map;
  * @param producerNodeId  生產者節點 id，指向集群中承擔發送角色的節點
  * @param consumerNodeIds 消費者節點 id 列表，指向集群中承擔消費角色的節點集合
  * @param headers         附加消息頭（鍵值對），隨消息一同傳遞
+ * @param options         中間件專屬選項（Kafka 的 key/partition/acks，RabbitMQ 的 exchange/routingKey 等），可為 null
  */
 public record MessageSimulationCommand(
         ClusterSelection cluster,
@@ -35,6 +36,23 @@ public record MessageSimulationCommand(
         String payloadTemplate,
         String producerNodeId,
         List<String> consumerNodeIds,
-        Map<String, String> headers
+        Map<String, String> headers,
+        Map<String, String> options
 ) {
+
+    /**
+     * 兼容舊調用方的構造器（無 options）。
+     */
+    public MessageSimulationCommand(
+            ClusterSelection cluster,
+            String topic,
+            String consumerGroup,
+            int messageCount,
+            String payloadTemplate,
+            String producerNodeId,
+            List<String> consumerNodeIds,
+            Map<String, String> headers
+    ) {
+        this(cluster, topic, consumerGroup, messageCount, payloadTemplate, producerNodeId, consumerNodeIds, headers, null);
+    }
 }

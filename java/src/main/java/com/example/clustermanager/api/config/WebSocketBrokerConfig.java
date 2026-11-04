@@ -11,7 +11,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  *
  * <p>API 层角色：为 {@link com.example.clustermanager.api.controller.ClusterTelemetryPushService}
  * 提供实时推送通道。后端通过 {@code SimpMessagingTemplate} 向 STOMP 主题推送指标与日志，
- * 前端通过 SockJS + STOMP 订阅消费（见 frontend 的 useClusterStreams.ts）。
+ * 前端通过 SockJS + STOMP 订阅消费（见前端 hooks/use-cluster-data.ts）。
  *
  * <p>关键配置说明：
  * <ul>

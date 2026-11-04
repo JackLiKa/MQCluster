@@ -2,6 +2,10 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { SiteHeader } from '@/components/site-header'
+import { ThemeProvider } from '@/components/theme-provider'
+import { ClusterStatusProvider } from '@/components/cluster-status-provider'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { Toaster } from '@/components/ui/sonner'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -14,17 +18,21 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'MQCluster — MQ 集群學習平台',
-  description: 'Local-first MQ cluster learning platform — simulate real RocketMQ clusters in your browser on a single machine.',
+  title: {
+    default: 'MQCluster — 多 MQ 集群学习平台',
+    template: '%s · MQCluster',
+  },
+  description: '本地优先的消息队列学习平台：在一台机器上运行真实的 RocketMQ、Kafka（KRaft）与 RabbitMQ（AMQP）集群，动手体验路由、副本、消费者组与确认机制。',
 }
 
 /**
- * 根佈局——所有頁面共享的 HTML 外殼。
+ * 根布局——所有页面共享的 HTML 外壳。
  *
  * 包含：
- * - 字體加載（Geist Sans + Geist Mono）
- * - 全局樣式（globals.css，含 Tailwind v4 指令）
- * - 站點頂部導航欄（SiteHeader）
+ * - 字体加载（Geist Sans + Geist Mono）
+ * - 主题（next-themes，html 上切换 .dark）、Tooltip 与 Toast 容器
+ * - 全局集群状态（首页卡片与顶栏共用）
+ * - 站点顶部导航栏（SiteHeader）
  */
 export default function RootLayout({
   children,
@@ -34,11 +42,19 @@ export default function RootLayout({
   return (
     <html
       lang="zh-CN"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
+        <ThemeProvider>
+          <TooltipProvider delay={200}>
+            <ClusterStatusProvider>
+              <SiteHeader />
+              <main className="flex-1">{children}</main>
+              <Toaster richColors closeButton position="top-right" />
+            </ClusterStatusProvider>
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

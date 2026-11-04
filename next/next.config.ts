@@ -3,14 +3,17 @@ import type { NextConfig } from 'next'
 /**
  * Next.js 核心配置。
  *
- * 關鍵配置：
- * - rewrites：將 /api/** 和 /ws 請求代理到後端 http://localhost:8088，
- *   實現前後端分離開發時的無 CORS 調用。
- * - 後端為 Spring Boot 4.1.0，端口 8088。
- * - 前端 dev server 端口 3000（Next.js 默認）。
+ * 关键配置：
+ * - rewrites：将 /api/** 和 /ws 请求代理到后端 http://localhost:8088，
+ *   实现前后端分离开发时的无 CORS 调用。
+ * - proxyTimeout：Kafka 一键启动（controller + 3 broker）可能超过默认 30s，放宽到 120s。
+ * - 后端为 Spring Boot 4.1.0，端口 8088；前端 dev server 端口 3000。
  */
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['127.0.0.1'],
+  experimental: {
+    proxyTimeout: 120_000,
+  },
   async rewrites() {
     return [
       {
