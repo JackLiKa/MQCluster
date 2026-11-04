@@ -15,6 +15,7 @@ MQCluster 是一個社區驅動的學習平台，每一份貢獻——bug 報告
 - [請求功能](#請求功能)
 - [開發環境搭建](#開發環境搭建)
 - [代碼風格](#代碼風格)
+- [添加一種新的 MQ](#添加一種新的-mq或新增一個跨-mq-的標籤頁)
 - [提交規範（Conventional Commits）](#提交規範conventional-commits)
 - [Pull Request 流程](#pull-request-流程)
 
@@ -40,7 +41,7 @@ MQCluster 是一個社區驅動的學習平台，每一份貢獻——bug 報告
    - **日誌/截圖**——後端控制台輸出、瀏覽器控制台錯誤或截圖。
 3. **保持響應**——維護者可能追問；請及時回覆。
 
-> **安全相關 bug**：**不要**開公開 issue。見 [SECURITY.md](../SECURITY.md)。
+> **安全相關 bug**：**不要**開公開 issue。見 [SECURITY.md](../../SECURITY.md)。
 
 ---
 
@@ -123,6 +124,24 @@ npm run dev
 
 ---
 
+## 添加一種新的 MQ（或新增一個跨 MQ 的標籤頁）
+
+六邊形分層的好處是：新增一種中間件，每層只需動一次。建議按這個順序：
+
+1. **Core** — 加 `MiddlewareType` 常量、領域模型與端口（`IClusterProvider`，以及可選的
+   `IKafkaInspector` / `IStressLab` / `IInternalsInspector`）。`core` 必須保持零外部依賴。
+2. **Infrastructure** — 新建 `infrastructure/<middleware>`，放 provider 與運行時；若需要壓力實驗，
+   實現 `IStressLab` 並提供 `StressSender`，直接複用 `infrastructure/lab/StressRunner`，不要另寫一套引擎。
+3. **能力聲明** — 在 `ProviderDescriptor` 裡聲明 `ProviderCapabilities`，前端靠它決定顯示哪些標籤頁。
+4. **API** — 只有 MQ 專屬路由才需要新控制器；`/lab/stress` 與 `/lab/internals` 由 `LabController` 共用。
+5. **前端** — 在 `lib/mq-registry.ts` 註冊（名稱、強調色、角色 → 形狀、帶 `requires` 的標籤頁），
+   組件放 `components/<middleware>` 或直接複用 `components/lab`。
+6. **測試** — 生命週期行為的 provider 測試 + 黑盒 API 測試，然後跑 `./mvnw clean verify`。
+7. **文檔** — README 表格、`AGENTS.md`、以及成對的 `docs/ARCHITECTURE.md` 與
+   `docs/zh/ARCHITECTURE.zh.md`（兩份文件結構保持一一對應）。
+
+---
+
 ## 提交規範（Conventional Commits）
 
 我們遵循 [Conventional Commits](https://www.conventionalcommits.org/) 規範。
@@ -202,8 +221,9 @@ test(core): 添加集群狀態轉換單元測試
 - [ ] 分支與 `main` 同步。
 - [ ] 提交遵循 Conventional Commits。
 - [ ] 後端測試通過（`./mvnw clean verify`）。
-- [ ] 前端 typecheck 和 lint 通過。
-- [ ] 行為變更時文檔已更新。
+- [ ] 前端 typecheck、lint 與 build 通過。
+- [ ] 行為變更時文檔已更新——`docs/ARCHITECTURE.md` 有改動時，同步更新 `docs/zh/ARCHITECTURE.zh.md`。
+- [ ] 相對連結仍可解析（`python3 scripts/doc-lint.py`）。
 - [ ] 無 secret 或憑證提交。
 
 ---
