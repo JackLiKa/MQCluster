@@ -1,5 +1,5 @@
 name: Feature request
-_description: Suggest an idea or improvement.
+description: Suggest an idea or improvement.
 title: '[Feature] '
 labels: ['enhancement']
 body:
@@ -7,6 +7,7 @@ body:
     attributes:
       value: |
         Thanks for sharing your idea! Please describe the feature and the problem it solves.
+        Ideas that teach something real (routing, ordering, storage, back-pressure, failover) fit this project best.
   - type: textarea
     id: problem
     attributes:

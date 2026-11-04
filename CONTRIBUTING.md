@@ -16,6 +16,7 @@ This document covers everything you need to start contributing effectively.
 - [Requesting Features](#requesting-features)
 - [Development Environment Setup](#development-environment-setup)
 - [Code Style](#code-style)
+- [Adding a New MQ (or a New Tab for All MQs)](#adding-a-new-mq-or-a-new-tab-for-all-mqs)
 - [Commit Convention (Conventional Commits)](#commit-convention-conventional-commits)
 - [Pull Request Process](#pull-request-process)
 
@@ -126,6 +127,28 @@ npm run dev
 
 ---
 
+## Adding a New MQ (or a New Tab for All MQs)
+
+The hexagonal layout means a new middleware touches each layer exactly once. Follow this order:
+
+1. **Core** — add the `MiddlewareType` constant, the domain models and the port interfaces
+   (`IClusterProvider` plus optional capability ports such as `IKafkaInspector`, `IStressLab`,
+   `IInternalsInspector`). `core` must stay dependency-free.
+2. **Infrastructure** — create `infrastructure/<middleware>` with the provider and its runtime; if the
+   MQ should support load experiments, implement `IStressLab` with a `StressSender` and reuse
+   `infrastructure/lab/StressRunner` instead of writing another engine.
+3. **Capabilities** — declare them in the provider's `ProviderDescriptor` (`ProviderCapabilities`), the
+   frontend uses them to decide which tabs appear.
+4. **API** — add a controller only for MQ-specific routes; `/lab/stress` and `/lab/internals` are shared
+   by `LabController`.
+5. **Frontend** — register the MQ in `lib/mq-registry.ts` (name, accent, role → shape, tabs with
+   `requires`), then add components under `components/<middleware>` or reuse `components/lab`.
+6. **Tests** — a provider test for lifecycle behaviour and a black-box API test; then `./mvnw clean verify`.
+7. **Docs** — update the README tables, `AGENTS.md`, and both `docs/ARCHITECTURE.md` and
+   `docs/zh/ARCHITECTURE.zh.md` (the two files are kept structurally identical).
+
+---
+
 ## Commit Convention (Conventional Commits)
 
 We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
@@ -205,8 +228,10 @@ test(core): add unit tests for cluster state transitions
 - [ ] Branch is up to date with `main`.
 - [ ] Commits follow Conventional Commits.
 - [ ] Backend tests pass (`./mvnw clean verify`).
-- [ ] Frontend type-check and lint pass.
-- [ ] Documentation updated if behavior changed.
+- [ ] Frontend type-check, lint and build pass.
+- [ ] Documentation updated if behavior changed — including `docs/zh/ARCHITECTURE.zh.md` when
+      `docs/ARCHITECTURE.md` changes.
+- [ ] Relative links still resolve (`python3 scripts/doc-lint.py`).
 - [ ] No secrets or credentials committed.
 
 ---

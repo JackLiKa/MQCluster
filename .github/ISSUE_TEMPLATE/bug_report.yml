@@ -1,5 +1,5 @@
 name: Bug report
-_description: Report a problem or unexpected behavior.
+description: Report a problem or unexpected behavior.
 title: '[Bug] '
 labels: ['bug']
 body:
@@ -21,8 +21,8 @@ body:
       description: Provide minimal steps to reproduce the behavior.
       placeholder: |
         1. Start the backend with `./mvnw spring-boot:run`
-        2. Open `http://localhost:3000/`
-        3. Click ...
+        2. Start the frontend with `npm run dev` and open `http://localhost:3000/`
+        3. Open e.g. `/mq/kafka?tab=stress` and click ...
     validations:
       required: true
   - type: textarea
@@ -43,11 +43,13 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: OS, Java version, browser, and commit hash.
+      description: OS, Java and Node versions, browser, the MQ and tab involved, and the commit hash.
       placeholder: |
-        - OS: Windows 11
-        - Java: 21.0.9
-        - Browser: Chrome 128
+        - OS: macOS 15
+        - Java: 21.0.11
+        - Node: 22.x
+        - Browser: Chrome 140
+        - MQ / tab: kafka / 内部机制
         - Commit: abc1234
     validations:
       required: false

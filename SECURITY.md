@@ -2,8 +2,9 @@
 
 ## Supported Versions
 
-MQCluster is a local-first learning tool and is currently in early development (`0.1.x`).
-Security fixes are applied to the latest `main` branch and the most recent release.
+MQCluster is a local-first learning tool and is under active development — the version in
+`java/pom.xml` may be a `-SNAPSHOT` ahead of the latest release tag. Security fixes are applied to the
+latest `main` branch and the most recent release.
 
 | Version | Supported |
 | --- | --- |
@@ -63,8 +64,11 @@ MQCluster is designed to run **locally** on a single machine for learning purpos
 
 - The backend listens on **port 8088** and the frontend on **port 3000** — both bind to `localhost` by default.
   Do **not** expose these ports to the public internet.
-- The embedded RocketMQ runtime stores data under `java/run/pseudo-cluster/` — this directory may contain
-  message payloads. Avoid running MQCluster on shared or untrusted machines if you handle sensitive data.
+- The embedded runtimes store data under `java/run/` (`pseudo-cluster/`, `kafka-cluster/`,
+  `rabbitmq-cluster/`) — these directories may contain message payloads. Avoid running MQCluster on shared
+  or untrusted machines if you handle sensitive data.
+- The **压力实验** tab deliberately saturates the embedded broker (up to 50,000 msg/s for 32 threads).
+  Run it on a machine you own; it is a local load test, not a remote attack surface.
 - Always run from source or official releases. Do not trust unverified binaries.
 
 ---
