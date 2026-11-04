@@ -2,6 +2,8 @@
 
 # MQCluster
 
+**English** · [简体中文](README.zh.md)
+
 ### Local-first MQ learning platform — run real RocketMQ, Kafka and RabbitMQ (AMQP 0-9-1) clusters side by side, in your browser, on a single machine.
 
 [![CI](https://github.com/JackLiKa/MQCluster/actions/workflows/ci.yml/badge.svg)](https://github.com/JackLiKa/MQCluster/actions/workflows/ci.yml)
@@ -245,7 +247,8 @@ MQCluster/
 ├── LICENSE                    # Apache 2.0
 ├── CONTRIBUTING.md            # Contribution guidelines
 ├── SECURITY.md                # Security policy
-└── README.md                  # This file
+├── README.md                  # This file (English)
+└── README.zh.md               # 简体中文版
 ```
 
 ---
@@ -398,6 +401,7 @@ This project is licensed under the **Apache License 2.0** — see [LICENSE](LICE
 
 本项目同时提供中文文档：
 
+- **[README（中文）](README.zh.md)** — 本文件的中文版，含同一套压测实测数据
 - **[架构文档（中文）](docs/zh/ARCHITECTURE.zh.md)** — 六边形架构、前后端分离、三种嵌入式 MQ 详解（含压力实验与内部机制）
 - **[MQ 特性支持矩阵](docs/MQ_FEATURE_MATRIX.md)** — Kafka / Qpid 实测结论与内存占用
 - **[贡献指南（中文）](docs/zh/CONTRIBUTING.zh.md)** — 如何参与开发、提交 PR
