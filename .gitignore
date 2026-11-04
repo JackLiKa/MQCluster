@@ -30,6 +30,7 @@ logs/
 # Runtime
 java/run/
 .devin/
+.qoder/
 
 # Playwright MCP artifacts
 .playwright-mcp/
