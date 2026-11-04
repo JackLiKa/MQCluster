@@ -18,6 +18,7 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  --color-chart-6: var(--chart-6);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -46,6 +47,15 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* MQ 强调色与状态色——可直接用 bg-mq-accent / text-status-running 等工具类 */
+  --color-mq-accent: var(--mq-accent);
+  --color-mq-accent-foreground: var(--mq-accent-foreground);
+  --color-mq-accent-soft: var(--mq-accent-soft);
+  --color-status-running: var(--status-running);
+  --color-status-stopped: var(--status-stopped);
+  --color-status-failed: var(--status-failed);
+  --color-status-degraded: var(--status-degraded);
+  --color-status-starting: var(--status-starting);
 }
 
 :root {
@@ -67,11 +77,12 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --chart-1: oklch(0.58 0.17 255);
+  --chart-2: oklch(0.6 0.13 165);
+  --chart-3: oklch(0.66 0.15 65);
+  --chart-4: oklch(0.58 0.2 330);
+  --chart-5: oklch(0.55 0.18 295);
+  --chart-6: oklch(0.62 0.16 25);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -81,6 +92,16 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* 默认强调色（未进入具体 MQ 时）——与 primary 一致 */
+  --mq-accent: oklch(0.205 0 0);
+  --mq-accent-foreground: oklch(0.985 0 0);
+  --mq-accent-soft: oklch(0.97 0 0);
+  /* 状态色：浅色背景下作为文字 / 圆点均满足 WCAG AA（L ≤ 0.56） */
+  --status-running: oklch(0.55 0.15 152);
+  --status-stopped: oklch(0.55 0.015 260);
+  --status-failed: oklch(0.55 0.21 27);
+  --status-degraded: oklch(0.56 0.13 70);
+  --status-starting: oklch(0.53 0.17 250);
 }
 
 .dark {
@@ -102,11 +123,12 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --chart-1: oklch(0.72 0.14 255);
+  --chart-2: oklch(0.76 0.12 165);
+  --chart-3: oklch(0.8 0.13 75);
+  --chart-4: oklch(0.74 0.16 330);
+  --chart-5: oklch(0.72 0.14 295);
+  --chart-6: oklch(0.73 0.15 25);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -115,6 +137,60 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --mq-accent: oklch(0.922 0 0);
+  --mq-accent-foreground: oklch(0.205 0 0);
+  --mq-accent-soft: oklch(0.269 0 0);
+  /* 深色背景下提高亮度（L ≥ 0.72），保证与 0.145 背景对比度 ≥ 4.5 */
+  --status-running: oklch(0.76 0.16 152);
+  --status-stopped: oklch(0.72 0.015 260);
+  --status-failed: oklch(0.72 0.17 25);
+  --status-degraded: oklch(0.8 0.14 80);
+  --status-starting: oklch(0.74 0.13 250);
+}
+
+/*
+ * 每种 MQ 的强调色（OKLCH）：色相明显区分——RocketMQ 靛蓝 265°、Kafka 青绿 185°、RabbitMQ 橙 50°。
+ * 浅色：L≈0.52，作为按钮底色配白字、或白底上的文字，对比度均 ≥ 4.5（WCAG AA）。
+ * 深色：L≈0.76，作为按钮底色配深色字、或深底上的文字，对比度均 ≥ 4.5。
+ * 进入 [data-mq] 容器后 primary / ring 同步切换为该 MQ 强调色，按钮、滑块等自动着色。
+ */
+[data-mq='rocketmq'] {
+  --mq-accent: oklch(0.52 0.2 265);
+  --mq-accent-foreground: oklch(0.985 0 0);
+  --mq-accent-soft: oklch(0.95 0.03 265);
+}
+[data-mq='kafka'] {
+  --mq-accent: oklch(0.52 0.1 185);
+  --mq-accent-foreground: oklch(0.985 0 0);
+  --mq-accent-soft: oklch(0.95 0.03 185);
+}
+[data-mq='rabbitmq'] {
+  --mq-accent: oklch(0.54 0.16 45);
+  --mq-accent-foreground: oklch(0.985 0 0);
+  --mq-accent-soft: oklch(0.95 0.035 50);
+}
+.dark [data-mq='rocketmq'],
+.dark[data-mq='rocketmq'] {
+  --mq-accent: oklch(0.76 0.13 270);
+  --mq-accent-foreground: oklch(0.18 0.04 265);
+  --mq-accent-soft: oklch(0.3 0.07 265);
+}
+.dark [data-mq='kafka'],
+.dark[data-mq='kafka'] {
+  --mq-accent: oklch(0.78 0.11 185);
+  --mq-accent-foreground: oklch(0.18 0.03 185);
+  --mq-accent-soft: oklch(0.3 0.05 185);
+}
+.dark [data-mq='rabbitmq'],
+.dark[data-mq='rabbitmq'] {
+  --mq-accent: oklch(0.77 0.14 55);
+  --mq-accent-foreground: oklch(0.2 0.05 45);
+  --mq-accent-soft: oklch(0.31 0.07 50);
+}
+[data-mq] {
+  --primary: var(--mq-accent);
+  --primary-foreground: var(--mq-accent-foreground);
+  --ring: var(--mq-accent);
 }
 
 @layer base {
@@ -127,4 +203,26 @@
   html {
     @apply font-sans;
   }
+}
+
+/* 状态圆点的呼吸动画（启动中） */
+@keyframes mq-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.mq-pulse {
+  animation: mq-pulse 1.2s ease-in-out infinite;
+}
+
+/* 新出现的记录（rebalance、状态流转）淡入 */
+@keyframes mq-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.mq-fade-in {
+  animation: mq-fade-in 0.5s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mq-pulse,
+  .mq-fade-in { animation: none; }
 }

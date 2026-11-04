@@ -20,6 +20,7 @@ import java.util.Map;
  * @param producerNodeId   生产者节点 ID，不能为空白
  * @param consumerNodeIds  消费者节点 ID 列表，可为 null 或空
  * @param headers          消息头键值对，可为 null
+ * @param options          中间件专属选项（Kafka：key/partition/acks/compression；RabbitMQ：exchange/routingKey/ackMode 等），可为 null
  */
 public record MessageSimulationRequest(
         @NotBlank String topic,
@@ -28,6 +29,7 @@ public record MessageSimulationRequest(
         String payloadTemplate,
         @NotBlank String producerNodeId,
         List<String> consumerNodeIds,
-        Map<String, String> headers
+        Map<String, String> headers,
+        Map<String, String> options
 ) {
 }

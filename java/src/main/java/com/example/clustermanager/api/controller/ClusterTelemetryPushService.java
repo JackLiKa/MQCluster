@@ -3,10 +3,9 @@ package com.example.clustermanager.api.controller;
 import com.example.clustermanager.api.config.ClusterStreamProperties;
 import com.example.clustermanager.application.model.ClusterSelection;
 import com.example.clustermanager.application.service.ClusterFacadeService;
-import com.example.clustermanager.core.model.ClusterMode;
-import com.example.clustermanager.core.model.MiddlewareType;
-import com.example.clustermanager.infrastructure.pseudo.PseudoClusterProperties;
-import com.example.clustermanager.infrastructure.rocketmq.RocketMqClusterProperties;
+import com.example.clustermanager.core.model.ProviderDescriptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,11 +16,11 @@ import org.springframework.stereotype.Service;
  *
  * <p>API 层角色：作为出站适配器，周期性从 {@link ClusterFacadeService} 拉取指标/日志，
  * 经 {@link SimpMessagingTemplate} 推送到 STOMP 主题
- * {@code /topic/clusters/{clusterId}/{metrics|logs}}，前端通过 useClusterStreams.ts 订阅消费。
+ * {@code /topic/clusters/{clusterId}/{metrics|logs}}，前端通过 hooks/use-cluster-data.ts 订阅消费。
  *
- * <p>推送目标：当前固定推送两个集群——PSEUDO（local-lab）与 REAL（rocketmq-demo），
- * 均为 ROCKETMQ 中间件。集群 ID 分别来自 {@link PseudoClusterProperties} 与
- * {@link RocketMqClusterProperties}。
+ * <p>推送目标：遍历 {@link ClusterFacadeService#listProviders()} 返回的全部 provider
+ * （RocketMQ PSEUDO/REAL、Kafka、RabbitMQ 等），按各自 descriptor 中的 clusterId/mode/middleware 推送。
+ * 新增中间件无需修改本类。
  *
  * <p>Phase 0-3 优化：无 WebSocket 订阅者时跳过推送（见 {@link #publish}），
  * 避免无意义的 provider 调用——尤其 REAL 模式每次拉指标都会打 RocketMQ Admin API。
@@ -30,16 +29,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class ClusterTelemetryPushService {
 
+    private static final Logger log = LoggerFactory.getLogger(ClusterTelemetryPushService.class);
+
     /** STOMP 消息发送模板，用于向主题推送消息。 */
     private final SimpMessagingTemplate messagingTemplate;
     /** STOMP 用户注册表，用于检测某目的地是否有活跃订阅者。 */
     private final SimpUserRegistry userRegistry;
     /** 应用层编排服务，拉取指标与日志的唯一入口。 */
     private final ClusterFacadeService clusterFacadeService;
-    /** 伪集群属性，提供 PSEUDO 集群 ID。 */
-    private final PseudoClusterProperties pseudoProperties;
-    /** 真实 RocketMQ 集群属性，提供 REAL 集群 ID。 */
-    private final RocketMqClusterProperties rocketMqClusterProperties;
     /** 遥测推送配置，提供推送周期等参数。 */
     private final ClusterStreamProperties streamProperties;
 
@@ -49,44 +46,51 @@ public class ClusterTelemetryPushService {
      * @param messagingTemplate          STOMP 消息发送模板
      * @param userRegistry               STOMP 用户注册表
      * @param clusterFacadeService       应用层编排服务
-     * @param pseudoProperties           伪集群属性
-     * @param rocketMqClusterProperties  真实集群属性
      * @param streamProperties           遥测推送配置
      */
     public ClusterTelemetryPushService(
             SimpMessagingTemplate messagingTemplate,
             SimpUserRegistry userRegistry,
             ClusterFacadeService clusterFacadeService,
-            PseudoClusterProperties pseudoProperties,
-            RocketMqClusterProperties rocketMqClusterProperties,
             ClusterStreamProperties streamProperties
     ) {
         this.messagingTemplate = messagingTemplate;
         this.userRegistry = userRegistry;
         this.clusterFacadeService = clusterFacadeService;
-        this.pseudoProperties = pseudoProperties;
-        this.rocketMqClusterProperties = rocketMqClusterProperties;
         this.streamProperties = streamProperties;
     }
 
     /**
      * 定时推送指标快照。周期由 {@code cluster.stream.publish-interval-ms} 控制（默认 5000ms）。
-     * 分别推送 PSEUDO 与 REAL 两个集群的 metrics 主题。
+     * 遍历所有 provider 推送 metrics 主题。
      */
     @Scheduled(fixedRateString = "${cluster.stream.publish-interval-ms:5000}")
     public void pushSnapshots() {
-        publish(selection(pseudoProperties.clusterId(), ClusterMode.PSEUDO), "metrics");
-        publish(selection(rocketMqClusterProperties.clusterId(), ClusterMode.REAL), "metrics");
+        publishAll("metrics");
     }
 
     /**
      * 定时推送日志。周期同指标推送，但带一个周期的初始延迟，避免与指标推送同时执行。
-     * 分别推送 PSEUDO 与 REAL 两个集群的 logs 主题。
+     * 遍历所有 provider 推送 logs 主题。
      */
     @Scheduled(fixedRateString = "${cluster.stream.publish-interval-ms:5000}", initialDelayString = "${cluster.stream.publish-interval-ms:5000}")
     public void pushLogs() {
-        publish(selection(pseudoProperties.clusterId(), ClusterMode.PSEUDO), "logs");
-        publish(selection(rocketMqClusterProperties.clusterId(), ClusterMode.REAL), "logs");
+        publishAll("logs");
+    }
+
+    /**
+     * 对所有已注册 provider 推送指定通道。单个集群推送失败不影响其他集群。
+     *
+     * @param channel 通道名（"metrics" 或 "logs"）
+     */
+    private void publishAll(String channel) {
+        for (ProviderDescriptor descriptor : clusterFacadeService.listProviders()) {
+            try {
+                publish(selection(descriptor), channel);
+            } catch (RuntimeException exception) {
+                log.debug("Telemetry push failed for {} / {}: {}", descriptor.clusterId(), channel, exception.getMessage());
+            }
+        }
     }
 
     /**
@@ -126,13 +130,12 @@ public class ClusterTelemetryPushService {
     }
 
     /**
-     * 构建集群选择值对象，middleware 固定为 ROCKETMQ。
+     * 由 provider 描述符构建集群选择值对象。
      *
-     * @param clusterId 集群标识
-     * @param mode      集群模式
+     * @param descriptor provider 描述符
      * @return 集群选择值对象
      */
-    private ClusterSelection selection(String clusterId, ClusterMode mode) {
-        return new ClusterSelection(clusterId, mode, MiddlewareType.ROCKETMQ);
+    private ClusterSelection selection(ProviderDescriptor descriptor) {
+        return new ClusterSelection(descriptor.clusterId(), descriptor.mode(), descriptor.middleware());
     }
 }

@@ -12,6 +12,8 @@ package com.example.clustermanager.core.model;
 public enum MiddlewareType {
     /** Apache RocketMQ 消息中间件。 */
     ROCKETMQ,
-    /** Apache Kafka 消息中间件（预留，尚未实现适配器）。 */
-    KAFKA
+    /** Apache Kafka 消息中间件（嵌入式 KRaft 集群）。 */
+    KAFKA,
+    /** RabbitMQ / AMQP 0-9-1 消息中间件（嵌入式 Qpid Broker-J）。 */
+    RABBITMQ
 }

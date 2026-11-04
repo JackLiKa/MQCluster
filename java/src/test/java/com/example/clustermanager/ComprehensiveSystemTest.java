@@ -157,9 +157,9 @@ class ComprehensiveSystemTest {
         }
 
         @Test
-        @DisplayName("無效等價類：不存在的 middleware（如 RABBITMQ）→ 400")
-        void invalidMiddlewareRabbitmq() throws Exception {
-            mockMvc.perform(get("/api/clusters/pseudo/rabbitmq/local-lab/topology"))
+        @DisplayName("無效等價類：不存在的 middleware（如 PULSAR）→ 400")
+        void invalidMiddlewarePulsar() throws Exception {
+            mockMvc.perform(get("/api/clusters/pseudo/pulsar/local-lab/topology"))
                     .andExpect(status().isBadRequest());
         }
 

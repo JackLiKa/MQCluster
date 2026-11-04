@@ -1,0 +1,45 @@
+{
+  "name": "mqcluster-rabbit",
+  "modelVersion": "8.0",
+  "authenticationproviders": [
+    {
+      "name": "plain",
+      "type": "Plain",
+      "secureOnlyMechanisms": [],
+      "users": [
+        {
+          "name": "guest",
+          "type": "managed",
+          "password": "guest"
+        }
+      ]
+    }
+  ],
+  "ports": [
+    {
+      "name": "AMQP",
+      "port": "${qpid.amqp_port}",
+      "bindingAddress": "127.0.0.1",
+      "authenticationProvider": "plain",
+      "protocols": ["AMQP_0_9_1"],
+      "virtualhostaliases": [
+        {
+          "name": "defaultAlias",
+          "type": "defaultAlias"
+        },
+        {
+          "name": "nameAlias",
+          "type": "nameAlias"
+        }
+      ]
+    }
+  ],
+  "virtualhostnodes": [
+    {
+      "name": "default",
+      "type": "Memory",
+      "defaultVirtualHostNode": "true",
+      "virtualHostInitialConfiguration": "{\"type\": \"Memory\"}"
+    }
+  ]
+}

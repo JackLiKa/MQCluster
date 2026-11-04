@@ -1,45 +1,55 @@
 /**
- * 與後端 DTO 對齊的 TypeScript 類型定義。
+ * 与后端 DTO 对齐的 TypeScript 类型定义。
  *
- * 所有類型嚴格映射 Java 後端的 record 字段（含命名 casing 差異），
- * 確保前端 API 調用與後端響應結構一致。
+ * 所有类型严格映射 Java 后端的 record 字段（含命名差异），
+ * 确保前端 API 调用与后端响应结构一致。
  */
 
-/** 集群模式——對應後端 ClusterMode 枚舉 */
+/** 集群模式——对应后端 ClusterMode 枚举 */
 export type ClusterMode = 'PSEUDO' | 'REAL'
 
-/** 中間件類型——對應後端 MiddlewareType 枚舉 */
-export type MiddlewareType = 'ROCKETMQ'
+/** 中间件类型——对应后端 MiddlewareType 枚举 */
+export type MiddlewareType = 'ROCKETMQ' | 'KAFKA' | 'RABBITMQ'
 
-/** 節點狀態——對應後端 NodeStatus 枚舉 */
+/** 节点状态——对应后端 NodeStatus 枚举 */
 export type NodeStatus = 'STOPPED' | 'STARTING' | 'RUNNING' | 'DEGRADED' | 'FAILED'
 
-/** 操作類型——對應後端 OperationType 枚舉 */
+/** 操作类型——对应后端 OperationType 枚举 */
 export type OperationType = 'START' | 'STOP' | 'RESTART'
 
-/** 集群選擇標識——對應後端 ClusterSelection record */
+/** 集群选择标识——对应后端 ClusterSelection record */
 export interface ClusterSelection {
   clusterId: string
   mode: ClusterMode
   middleware: MiddlewareType
 }
 
-/** 集群引用——對應後端 ClusterRef record */
+/** 集群引用——对应后端 ClusterRef record */
 export interface ClusterRef {
   clusterId: string
   mode: ClusterMode
   middleware: MiddlewareType
 }
 
-/** Provider 描述符——對應後端 ProviderDescriptor record */
+/** Provider 能力标识——对应后端 ProviderCapabilities 常量 */
+export type ProviderCapability =
+  | 'CONNECTION_CONFIG'
+  | 'SERVICE_REGISTRATION'
+  | 'CLUSTER_OPERATIONS'
+  | 'KAFKA_INSPECTION'
+  | 'RABBIT_INSPECTION'
+
+/** Provider 描述符——对应后端 ProviderDescriptor record */
 export interface ProviderDescriptor {
   providerId: string
   displayName: string
   mode: ClusterMode
   middleware: MiddlewareType
+  clusterId: string
+  capabilities: string[]
 }
 
-/** 集群節點——對應後端 ClusterNode record */
+/** 集群节点——对应后端 ClusterNode record */
 export interface ClusterNode {
   nodeId: string
   displayName: string
@@ -49,7 +59,7 @@ export interface ClusterNode {
   labels: Record<string, string>
 }
 
-/** 網絡鏈路——對應後端 NetworkLink record */
+/** 网络链路——对应后端 NetworkLink record */
 export interface NetworkLink {
   sourceNodeId: string
   targetNodeId: string
@@ -58,7 +68,7 @@ export interface NetworkLink {
   latencyMs: number
 }
 
-/** 集群拓撲——對應後端 ClusterTopology record */
+/** 集群拓扑——对应后端 ClusterTopology record */
 export interface ClusterTopology {
   cluster: ClusterRef
   nodes: ClusterNode[]
@@ -66,7 +76,7 @@ export interface ClusterTopology {
   activeVip: string | null
 }
 
-/** 節點指標——對應後端 NodeMetrics record */
+/** 节点指标——对应后端 NodeMetrics record */
 export interface NodeMetrics {
   nodeId: string
   cpuUsage: number
@@ -75,13 +85,13 @@ export interface NodeMetrics {
   networkOutBytesPerSecond: number
 }
 
-/** 監控快照——對應後端 MonitoringSnapshot record */
+/** 监控快照——对应后端 MonitoringSnapshot record */
 export interface MonitoringSnapshot {
   capturedAt: string
   nodes: NodeMetrics[]
 }
 
-/** 日誌條目——對應後端 LogEntry record */
+/** 日志条目——对应后端 LogEntry record */
 export interface LogEntry {
   timestamp: string
   nodeId: string
@@ -89,7 +99,7 @@ export interface LogEntry {
   message: string
 }
 
-/** 操作結果——對應後端 OperationResult record */
+/** 操作结果——对应后端 OperationResult record */
 export interface OperationResult {
   targetId: string
   operationType: OperationType | null
@@ -97,22 +107,24 @@ export interface OperationResult {
   message: string
 }
 
-/** 消息投遞結果——對應後端 MessageDeliveryResult record */
+/** 消息投递结果——对应后端 MessageDeliveryResult record */
 export interface MessageDeliveryResult {
   messageKey: string
   producerNodeId: string
   consumerNodeId: string
   success: boolean
   detail: string
+  /** 各 MQ 特有的结果字段（Kafka: partition/offset；RabbitMQ: queue/outcome 等） */
+  attributes?: Record<string, string> | null
 }
 
-/** 消息模擬結果——對應後端 MessageSimulationResult record */
+/** 消息模拟结果——对应后端 MessageSimulationResult record */
 export interface MessageSimulationResult {
   executedAt: string
   deliveries: MessageDeliveryResult[]
 }
 
-/** 消息模擬請求——對應後端 MessageSimulationRequest DTO */
+/** 消息模拟请求——对应后端 MessageSimulationRequest DTO */
 export interface MessageSimulationRequest {
   topic: string
   consumerGroup: string
@@ -121,9 +133,11 @@ export interface MessageSimulationRequest {
   producerNodeId: string
   consumerNodeIds?: string[]
   headers?: Record<string, string>
+  /** 各 MQ 特有参数（可省略） */
+  options?: Record<string, string>
 }
 
-/** 消息模板——對應後端 MessageTemplate record */
+/** 消息模板——对应后端 MessageTemplate record */
 export interface MessageTemplate {
   id: string
   name: string
@@ -131,7 +145,7 @@ export interface MessageTemplate {
   description: string
 }
 
-/** RocketMQ 連接配置——對應後端 ConfigSnapshot record */
+/** RocketMQ 连接配置——对应后端 ConfigSnapshot record */
 export interface RocketMqConnectionConfig {
   nameServers: string[]
   sendMsgTimeoutMs: number
@@ -139,7 +153,7 @@ export interface RocketMqConnectionConfig {
   consumerGroupPrefix: string
 }
 
-/** 服務登記請求——對應後端 ServiceRegistrationRequest DTO */
+/** 服务登记请求——对应后端 ServiceRegistrationRequest DTO */
 export interface ServiceRegistrationRequest {
   nodeId: string
   displayName: string
@@ -150,12 +164,12 @@ export interface ServiceRegistrationRequest {
   labels?: Record<string, string>
 }
 
-/** 節點操作請求——對應後端 NodeOperationRequest DTO */
+/** 节点操作请求——对应后端 NodeOperationRequest DTO */
 export interface NodeOperationRequest {
   operationType: OperationType
 }
 
-/** 系統配置快照——對應後端 RateLimitService.SystemProfile record */
+/** 系统配置快照——对应后端 RateLimitService.SystemProfile record */
 export interface SystemProfile {
   logicalCores: number
   availableHeapMb: number
@@ -166,7 +180,7 @@ export interface SystemProfile {
   availableDiskGb: number
 }
 
-/** 限流計算結果——對應後端 RateLimitService.RateLimitResult record */
+/** 限流计算结果——对应后端 RateLimitService.RateLimitResult record */
 export interface RateLimitResult {
   maxMessages: number
   minFloor: number

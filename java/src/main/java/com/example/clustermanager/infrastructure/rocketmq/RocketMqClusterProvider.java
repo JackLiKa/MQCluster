@@ -61,13 +61,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class RocketMqClusterProvider implements IClusterProvider {
 
-    /** Provider 描述符 —— 标识本 Provider 为 REAL 模式的 RocketMQ 适配器 */
-    private static final ProviderDescriptor DESCRIPTOR = new ProviderDescriptor(
-            "rocketmq-admin",
-            "RocketMQ Admin Provider",
-            com.example.clustermanager.core.model.ClusterMode.REAL,
-            MiddlewareType.ROCKETMQ
-    );
+    /** Provider 描述符 —— 标识本 Provider 为 REAL 模式的 RocketMQ 适配器；clusterId 来自配置 */
+    private final ProviderDescriptor descriptor;
 
     /** 真实 RocketMQ 集群配置属性（集群 ID、Dashboard 名称、NameServer 地址等） */
     private final RocketMqClusterProperties properties;
@@ -104,6 +99,16 @@ public class RocketMqClusterProvider implements IClusterProvider {
         this.auditLog = auditLog;
         this.adminClient = adminClient;
         this.connectionConfig = connectionConfig;
+        this.descriptor = new ProviderDescriptor(
+                "rocketmq-admin",
+                "RocketMQ 真实集群",
+                com.example.clustermanager.core.model.ClusterMode.REAL,
+                MiddlewareType.ROCKETMQ,
+                properties.clusterId(),
+                java.util.Set.of(
+                        com.example.clustermanager.core.model.ProviderCapabilities.CONNECTION_CONFIG,
+                        com.example.clustermanager.core.model.ProviderCapabilities.SERVICE_REGISTRATION)
+        );
     }
 
     /**
@@ -113,7 +118,7 @@ public class RocketMqClusterProvider implements IClusterProvider {
      */
     @Override
     public ProviderDescriptor descriptor() {
-        return DESCRIPTOR;
+        return descriptor;
     }
 
     /**

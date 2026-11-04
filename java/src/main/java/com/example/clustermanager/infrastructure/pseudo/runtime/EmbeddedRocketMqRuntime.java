@@ -161,10 +161,15 @@ public class EmbeddedRocketMqRuntime {
             return;
         }
         node.stop();
+        if (node.spec().role().isBroker()) {
+            // Broker 會額外佔用 listenPort - 2（fast remoting），必須成對釋放
+            portPool.releaseBrokerListenPort(node.spec().listenPort());
+        } else {
+            portPool.release(node.spec().listenPort());
+        }
         if (node.spec().haPort() > 0) {
             portPool.release(node.spec().haPort());
         }
-        portPool.release(node.spec().listenPort());
 
         if (node.isNameserver()) {
             namesrvAddr = null;
@@ -439,15 +444,18 @@ public class EmbeddedRocketMqRuntime {
      * @throws IllegalStateException Broker 在 NameServer 之前啟動時拋出
      */
     private EmbeddedNodeSpec buildSpec(ManagedNode node) {
-        int listenPort = portPool.allocate();
-        int haPort = node.nodeRole().isBroker() ? portPool.allocate() : -1;
+        boolean broker = node.nodeRole().isBroker();
+        // Broker 的 listenPort 需要成對分配：BrokerController 會在 listenPort - 2 上
+        // 隱式啟動 fast remoting server，只發放 listenPort 會與其他節點端口衝突。
+        int listenPort = broker ? portPool.allocateBrokerListenPort() : portPool.allocate();
+        int haPort = broker ? portPool.allocate() : -1;
 
         if (node.nodeRole() == NodeRole.NAMESERVER) {
             return EmbeddedNodeSpec.nameserver(node.nodeId(), listenPort, baseStorePath);
         }
 
         if (namesrvAddr == null) {
-            portPool.release(listenPort);
+            portPool.releaseBrokerListenPort(listenPort);
             if (haPort > 0) {
                 portPool.release(haPort);
             }

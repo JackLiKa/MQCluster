@@ -12,7 +12,7 @@
     <artifactId>mqcluster</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <name>MQCluster</name>
-    <description>Local-first MQ cluster learning platform — simulate real RocketMQ clusters in your browser on a single machine.</description>
+    <description>Local-first MQ learning platform — run real embedded RocketMQ, Kafka (KRaft) and RabbitMQ (AMQP 0-9-1 via Qpid Broker-J) clusters in your browser on a single machine.</description>
     <url>https://github.com/JackLiKa/MQCluster</url>
     <inceptionYear>2026</inceptionYear>
 
@@ -46,6 +46,7 @@
     <properties>
         <java.version>21</java.version>
         <rocketmq.version>5.3.3</rocketmq.version>
+        <qpid-broker-j.version>9.2.1</qpid-broker-j.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
@@ -91,6 +92,84 @@
             <groupId>org.apache.rocketmq</groupId>
             <artifactId>rocketmq-namesrv</artifactId>
             <version>${rocketmq.version}</version>
+        </dependency>
+
+        <!-- Kafka：进程内嵌入真实 KRaft 集群（版本由 Spring Boot BOM 的 kafka.version 管理） -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_2.13</artifactId>
+            <exclusions>
+                <!-- 统一走 Logback：排除 Kafka 自带的 log4j2 实现/绑定 -->
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-slf4j-impl</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-slf4j2-impl</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-reload4j</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-server</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+        </dependency>
+
+        <!-- KRaft 存储格式化（Formatter / MetadataVersion）：Kafka 发布的 pom 把它们声明为 runtime 作用域，编译期需显式引入 -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-metadata</artifactId>
+            <version>${kafka.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-server-common</artifactId>
+            <version>${kafka.version}</version>
+        </dependency>
+
+        <!-- RabbitMQ：进程内嵌入 Apache Qpid Broker-J（AMQP 0-9-1），用官方客户端收发 -->
+        <dependency>
+            <groupId>org.apache.qpid</groupId>
+            <artifactId>qpid-broker-core</artifactId>
+            <version>${qpid-broker-j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.qpid</groupId>
+            <artifactId>qpid-broker-plugins-amqp-0-8-protocol</artifactId>
+            <version>${qpid-broker-j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.qpid</groupId>
+            <artifactId>qpid-broker-plugins-memory-store</artifactId>
+            <version>${qpid-broker-j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
         </dependency>
 
         <dependency>
