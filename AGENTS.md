@@ -37,7 +37,8 @@ MQCluster/
 │   │   └── types/            → TypeScript 類型定義
 │   ├── next.config.ts        → API 代理配置（/api → localhost:8088）
 │   └── .env.local            → 環境變量
-├── README.md      → 開源項目主 README
+├── README.md      → 開源項目主 README（英文，頂部可切換語言）
+├── README.zh.md   → 主 README 的簡體中文鏡像
 ├── CONTRIBUTING.md → 貢獻指南
 ├── SECURITY.md    → 安全政策
 ├── LICENSE        → Apache 2.0

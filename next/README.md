@@ -5,7 +5,7 @@ MQCluster 的浏览器端：一个 Next.js 16（App Router）+ React 19 + TypeSc
 可读的指标、可压垮的流量。
 
 > 完整说明、启动步骤与架构深挖在仓库根目录：
-> **[README.md](../README.md)** · **[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)**
+> **[README.md](../README.md)** · **[README.zh.md](../README.zh.md)** · **[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)**
 
 ## 快速开始
 
